@@ -63,6 +63,22 @@ rclone-encrypt encrypt input.txt output.bin
 rclone-encrypt decrypt output.bin input.txt
 ```
 
+### Automatic filename encryption (output optional)
+
+When `--output` is omitted, the filenames are automatically encrypted/decrypted using AES-EME (matching rclone):
+
+```bash
+# Encrypt: output filename is derived from the input filename
+# (only the content is encrypted—the derived name is rclone-compatible)
+rclone-encrypt encrypt document.txt
+
+# Decrypt: original filename is recovered from the encrypted filename
+rclone-encrypt decrypt <encrypted-filename>
+
+# --output still works to override the derived name
+rclone-encrypt encrypt input.txt output.bin
+```
+
 ### Supply password on command line (insecure)
 
 **WARNING:** Using `--password` exposes the password in process listings and shell history. Consider using the `RCLONE_ENCRYPT_PASSWORD` environment variable or omitting the flag to be prompted securely.
@@ -77,6 +93,8 @@ Rclone encryption uses:
 
 - **NaCl SecretBox (XSalsa20 + Poly1305)** for file contents.
 - **scrypt** (N=16384, r=8, p=1) for key derivation.
+- **AES-EME** for filename encryption (32-byte key, 16-byte tweak).
+- **Base32** encoding for encrypted filenames (lowercase, no padding) for case-insensitive FS compatibility.
 - A **default salt** if none is provided (rclone-compatible).
 
 ### Flags
@@ -86,7 +104,7 @@ Rclone encryption uses:
 | `--password` | *(prompted)* | Encryption password (use env var `RCLONE_ENCRYPT_PASSWORD` instead when possible) |
 | `--salt` | *(default rclone salt)* | Hex-encoded salt (omit to use rclone's default salt; also via `RCLONE_ENCRYPT_SALT` env var) |
 | `-i`, `--input` | *(positional)* | Input file path |
-| `-o`, `--output` | *(positional)* | Output file path |
+| `-o`, `--output` | *(auto-derived)* | Output file path (omit to use AES-EME encrypted/decrypted filename) |
 
 ## Building from Source
 
