@@ -385,3 +385,93 @@ func TestCLI_EncryptDecrypt_LargeFile(t *testing.T) {
 		t.Fatal("large file round-trip mismatch")
 	}
 }
+
+func TestCLI_EncryptDecrypt_AutoDeriveOutput(t *testing.T) {
+	bin := buildBinary(t)
+	dir := t.TempDir()
+	input := filepath.Join(dir, "myfile.txt")
+	if err := os.WriteFile(input, []byte("auto-derive test"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("RCLONE_ENCRYPT_PASSWORD", "test-pwd")
+
+	stdout, stderr, err := runCLI(t, bin, "encrypt", input)
+	if err != nil {
+		t.Fatalf("encrypt with auto-derive failed: %v\nstderr: %s", err, stderr)
+	}
+	_ = stdout
+	if !strings.Contains(stderr, "Derived output filename") {
+		t.Errorf("expected derivation message, got: %s", stderr)
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var encFile string
+	for _, e := range entries {
+		if e.Name() != "myfile.txt" {
+			encFile = filepath.Join(dir, e.Name())
+			break
+		}
+	}
+	if encFile == "" {
+		t.Fatal("no encrypted file found in output dir")
+	}
+
+	stdout, stderr, err = runCLI(t, bin, "decrypt", encFile)
+	if err != nil {
+		t.Fatalf("decrypt with auto-derive failed: %v\nstderr: %s", err, stderr)
+	}
+	_ = stdout
+	if !strings.Contains(stderr, "Derived output filename") {
+		t.Errorf("expected derivation message, got: %s", stderr)
+	}
+
+	result, _ := os.ReadFile(filepath.Join(dir, "myfile.txt"))
+	if string(result) != "auto-derive test" {
+		t.Errorf("got %q, want %q", string(result), "auto-derive test")
+	}
+}
+
+func TestCLI_EncryptDecrypt_OutputFlagOverridesAutoDerive(t *testing.T) {
+	bin := buildBinary(t)
+	dir := t.TempDir()
+	input := filepath.Join(dir, "override_test.txt")
+	output := filepath.Join(dir, "explicit_output.bin")
+	if err := os.WriteFile(input, []byte("override test"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("RCLONE_ENCRYPT_PASSWORD", "pwd")
+
+	stdout, stderr, err := runCLI(t, bin, "encrypt", "--output", output, input)
+	if err != nil {
+		t.Fatalf("encrypt failed: %v\nstderr: %s", err, stderr)
+	}
+	_ = stdout
+
+	if strings.Contains(stderr, "Derived output filename") {
+		t.Error("should NOT derive output when --output is provided")
+	}
+
+	if _, err := os.Stat(output); os.IsNotExist(err) {
+		t.Fatalf("output file %s was not created", output)
+	}
+
+	stdout, stderr, err = runCLI(t, bin, "decrypt", "--output", filepath.Join(dir, "restored.txt"), output)
+	if err != nil {
+		t.Fatalf("decrypt failed: %v\nstderr: %s", err, stderr)
+	}
+	_ = stdout
+
+	if strings.Contains(stderr, "Derived output filename") {
+		t.Error("should NOT derive output when --output is provided on decrypt")
+	}
+
+	result, _ := os.ReadFile(filepath.Join(dir, "restored.txt"))
+	if string(result) != "override test" {
+		t.Errorf("got %q, want %q", string(result), "override test")
+	}
+}

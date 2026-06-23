@@ -76,33 +76,59 @@ Use 'rclone-encrypt <command> --help' for command-specific options.
 }
 
 func printEncryptUsage() {
-	fmt.Fprint(os.Stderr, `Usage: rclone-encrypt encrypt [options] <input> <output>
+	fmt.Fprint(os.Stderr, `Usage: rclone-encrypt encrypt [options] <input> [<output>]
 
 Encrypt a file using rclone-compatible encryption.
+If output is omitted, the filename is encrypted with AES-EME and used as the output name.
 
 Options:
   --password    Password (WARNING: insecure - use env var RCLONE_ENCRYPT_PASSWORD instead, or omit to be prompted)
-  --salt        Optional hex-encoded salt (omit to use rclone's default salt)
+  --salt        Optional hex-encoded salt (omit to use rclone's default salt; also via RCLONE_ENCRYPT_SALT env var)
   -i, --input   Input file path
-  -o, --output  Output file path
+  -o, --output  Output file path (default: auto-derived from input filename)
 
-Positional arguments: <input> <output>
+Positional arguments: <input> [<output>]
 `)
 }
 
 func printDecryptUsage() {
-	fmt.Fprint(os.Stderr, `Usage: rclone-encrypt decrypt [options] <input> <output>
+	fmt.Fprint(os.Stderr, `Usage: rclone-encrypt decrypt [options] <input> [<output>]
 
 Decrypt a file encrypted with rclone-compatible encryption.
+If output is omitted, the encrypted filename is decrypted with AES-EME and used as the output name.
 
 Options:
   --password    Password (WARNING: insecure - use env var RCLONE_ENCRYPT_PASSWORD instead, or omit to be prompted)
-  --salt        Optional hex-encoded salt (omit to use rclone's default salt)
+  --salt        Optional hex-encoded salt (omit to use rclone's default salt; also via RCLONE_ENCRYPT_SALT env var)
   -i, --input   Input file path
-  -o, --output  Output file path
+  -o, --output  Output file path (default: auto-derived from encrypted filename)
 
-Positional arguments: <input> <output>
+Positional arguments: <input> [<output>]
 `)
+}
+
+func deriveEncryptOutput(input string, password string, salt []byte) (string, error) {
+	key, err := encrypt.DeriveKey(password, salt)
+	if err != nil {
+		return "", fmt.Errorf("derive key for filename: %w", err)
+	}
+	encPath, err := encrypt.EncryptFilePath(key, input)
+	if err != nil {
+		return "", fmt.Errorf("encrypt filename: %w", err)
+	}
+	return encPath, nil
+}
+
+func deriveDecryptOutput(encryptedInput string, password string, salt []byte) (string, error) {
+	key, err := encrypt.DeriveKey(password, salt)
+	if err != nil {
+		return "", fmt.Errorf("derive key for filename: %w", err)
+	}
+	decPath, err := encrypt.DecryptFilePath(key, encryptedInput)
+	if err != nil {
+		return "", fmt.Errorf("decrypt filename: %w", err)
+	}
+	return decPath, nil
 }
 
 func runEncrypt(args []string) error {
@@ -116,7 +142,7 @@ func runEncrypt(args []string) error {
 	fs.StringVar(&saltHex, "salt", "", "Optional hex-encoded salt")
 	fs.StringVar(&input, "input", "", "Input file path")
 	fs.StringVar(&input, "i", "", "Input file path (shorthand)")
-	fs.StringVar(&output, "output", "", "Output file path")
+	fs.StringVar(&output, "output", "", "Output file path (shorthand)")
 	fs.StringVar(&output, "o", "", "Output file path (shorthand)")
 
 	if err := fs.Parse(args); err != nil {
@@ -140,10 +166,6 @@ func runEncrypt(args []string) error {
 		printEncryptUsage()
 		return fmt.Errorf("input file is required")
 	}
-	if output == "" {
-		printEncryptUsage()
-		return fmt.Errorf("output file is required")
-	}
 
 	password, err := resolvePassword(password)
 	if err != nil {
@@ -153,6 +175,25 @@ func runEncrypt(args []string) error {
 	salt, err := resolveSalt(saltHex)
 	if err != nil {
 		return err
+	}
+
+	if output == "" {
+		fileSegment := input
+		dirPrefix := ""
+		if idx := strings.LastIndex(input, "/"); idx >= 0 {
+			dirPrefix = input[:idx+1]
+			fileSegment = input[idx+1:]
+		}
+		if idx := strings.LastIndex(input, "\\"); idx >= 0 {
+			dirPrefix = input[:idx+1]
+			fileSegment = input[idx+1:]
+		}
+		derived, err := deriveEncryptOutput(fileSegment, password, salt)
+		if err != nil {
+			return fmt.Errorf("derive output filename: %w", err)
+		}
+		output = dirPrefix + derived
+		fmt.Fprintf(os.Stderr, "Derived output filename: %s\n", output)
 	}
 
 	fmt.Fprintf(os.Stderr, "Encrypting %s -> %s ...\n", input, output)
@@ -198,10 +239,6 @@ func runDecrypt(args []string) error {
 		printDecryptUsage()
 		return fmt.Errorf("input file is required")
 	}
-	if output == "" {
-		printDecryptUsage()
-		return fmt.Errorf("output file is required")
-	}
 
 	password, err := resolvePassword(password)
 	if err != nil {
@@ -211,6 +248,25 @@ func runDecrypt(args []string) error {
 	salt, err := resolveSalt(saltHex)
 	if err != nil {
 		return err
+	}
+
+	if output == "" {
+		fileSegment := input
+		dirPrefix := ""
+		if idx := strings.LastIndex(input, "/"); idx >= 0 {
+			dirPrefix = input[:idx+1]
+			fileSegment = input[idx+1:]
+		}
+		if idx := strings.LastIndex(input, "\\"); idx >= 0 {
+			dirPrefix = input[:idx+1]
+			fileSegment = input[idx+1:]
+		}
+		derived, err := deriveDecryptOutput(fileSegment, password, salt)
+		if err != nil {
+			return fmt.Errorf("derive output filename: %w", err)
+		}
+		output = dirPrefix + derived
+		fmt.Fprintf(os.Stderr, "Derived output filename: %s\n", output)
 	}
 
 	fmt.Fprintf(os.Stderr, "Decrypting %s -> %s ...\n", input, output)
