@@ -1,25 +1,25 @@
 class RcloneEncrypt < Formula
   desc "Encrypt and decrypt files using rclone-compatible encryption (XSalsa20-Poly1305 + scrypt)"
   homepage "https://github.com/yetanotherchris/rclone-encrypt"
-  version "1.0.1"
+  version "1.0.2"
 
   on_macos do
     if Hardware::CPU.arm?
-      url "https://github.com/yetanotherchris/rclone-encrypt/releases/download/v1.0.1/rclone-encrypt-darwin-arm64.tar.gz"
-      sha256 "315ef7bb1cd48af23ab1b3ab6c1654cf5311aa1501e448de10dc47b4fe6284b5"
+      url "https://github.com/yetanotherchris/rclone-encrypt/releases/download/v1.0.2/rclone-encrypt-darwin-arm64.tar.gz"
+      sha256 "d4795d2a621032dc9f1a4b1e7eb75fe753ee202477f136a7f6f26d8f2c93386d"
     else
-      url "https://github.com/yetanotherchris/rclone-encrypt/releases/download/v1.0.1/rclone-encrypt-darwin-amd64.tar.gz"
-      sha256 "c3ef8dc2f41dbd04116396bb09052794fd9ef1371cf01fc07ddc685e528a97d2"
+      url "https://github.com/yetanotherchris/rclone-encrypt/releases/download/v1.0.2/rclone-encrypt-darwin-amd64.tar.gz"
+      sha256 "153ca4dda6803e48f7269fcb2fd6bc9ca2eb8c62c87aae599ce09d545ecbd8b3"
     end
   end
 
   on_linux do
     if Hardware::CPU.arm?
-      url "https://github.com/yetanotherchris/rclone-encrypt/releases/download/v1.0.1/rclone-encrypt-linux-arm64.tar.gz"
-      sha256 "ed725ccdd62a1e1a84e64fcd66079cf0c0dc17d76538d4acbbc2435fa643f153"
+      url "https://github.com/yetanotherchris/rclone-encrypt/releases/download/v1.0.2/rclone-encrypt-linux-arm64.tar.gz"
+      sha256 "44d6fcf1961a8715f5f3d4bf84f701aeffe3c981780f0ff88091e34a6b4d2d89"
     else
-      url "https://github.com/yetanotherchris/rclone-encrypt/releases/download/v1.0.1/rclone-encrypt-linux-amd64.tar.gz"
-      sha256 "02349256440f645aef47352e7699db98fbff1508a0c880919412ed0a267aa5c4"
+      url "https://github.com/yetanotherchris/rclone-encrypt/releases/download/v1.0.2/rclone-encrypt-linux-amd64.tar.gz"
+      sha256 "83bd8e018579126bf660adf19bf9d96437bb39e010ca6d34d87a8fad17f2a682"
     end
   end
 
