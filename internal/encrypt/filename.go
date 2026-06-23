@@ -96,6 +96,10 @@ func base64Decode(s string) ([]byte, error) {
 }
 
 func EncryptFileName(nameKey, nameTweak []byte, plaintext string) (string, error) {
+	return EncryptFileNameWithEncoding(nameKey, nameTweak, plaintext, FilenameEncodingBase32)
+}
+
+func EncryptFileNameWithEncoding(nameKey, nameTweak []byte, plaintext string, encoding FilenameEncoding) (string, error) {
 	if plaintext == "" {
 		return "", nil
 	}
@@ -107,7 +111,13 @@ func EncryptFileName(nameKey, nameTweak []byte, plaintext string) (string, error
 
 	padded := pkcs7p.Pad(nameCipherBlockSize, []byte(plaintext))
 	ciphertext := eme.Transform(block, nameTweak, padded, eme.DirectionEncrypt)
-	return base32Encode(ciphertext), nil
+
+	switch encoding {
+	case FilenameEncodingBase64:
+		return base64Encode(ciphertext), nil
+	default:
+		return base32Encode(ciphertext), nil
+	}
 }
 
 func DecryptFileName(nameKey, nameTweak []byte, ciphertext string) (string, error) {
@@ -153,12 +163,16 @@ func DecryptFileNameWithEncoding(nameKey, nameTweak []byte, ciphertext string, e
 }
 
 func EncryptFilePath(key *Key, path string) (string, error) {
+	return EncryptFilePathWithEncoding(key, path, FilenameEncodingBase32)
+}
+
+func EncryptFilePathWithEncoding(key *Key, path string, encoding FilenameEncoding) (string, error) {
 	segments := strings.Split(path, "/")
 	for i, seg := range segments {
 		if seg == "" {
 			continue
 		}
-		enc, err := EncryptFileName(key.NameKey[:], key.NameTweak[:], seg)
+		enc, err := EncryptFileNameWithEncoding(key.NameKey[:], key.NameTweak[:], seg, encoding)
 		if err != nil {
 			return "", fmt.Errorf("encrypt segment %q: %w", seg, err)
 		}
