@@ -1,0 +1,17 @@
+{
+  "homepage": "https://github.com/yetanotherchris/rclone-encrypt",
+  "description": "Encrypt and decrypt files using rclone-compatible encryption (XSalsa20-Poly1305 + scrypt)",
+  "version": "0.1.0",
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/yetanotherchris/rclone-encrypt/releases/download/v0.1.0/rclone-encrypt-windows-amd64.exe",
+      "hash": "",
+      "bin": [
+        [
+          "rclone-encrypt-windows-amd64.exe",
+          "rclone-encrypt"
+        ]
+      ]
+    }
+  }
+}
