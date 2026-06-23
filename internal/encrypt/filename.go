@@ -3,11 +3,30 @@ package encrypt
 import (
 	"crypto/aes"
 	"encoding/base32"
+	"encoding/base64"
 	"fmt"
 	"strings"
 
 	"github.com/rfjakob/eme"
 )
+
+type FilenameEncoding int
+
+const (
+	FilenameEncodingBase32 FilenameEncoding = iota
+	FilenameEncodingBase64
+)
+
+func ParseFilenameEncoding(s string) (FilenameEncoding, error) {
+	switch strings.ToLower(s) {
+	case "base32":
+		return FilenameEncodingBase32, nil
+	case "base64":
+		return FilenameEncodingBase64, nil
+	default:
+		return FilenameEncodingBase32, fmt.Errorf("unknown filename encoding: %q (supported: base32, base64)", s)
+	}
+}
 
 const nameCipherBlockSize = 16
 
@@ -15,6 +34,7 @@ var (
 	ErrPadding         = fmt.Errorf("invalid padding")
 	ErrNotMultiple     = fmt.Errorf("encrypted name is not a multiple of block size")
 	ErrBadBase32       = fmt.Errorf("encrypted filename contains padding characters")
+	ErrBadBase64       = fmt.Errorf("decoding filename with base64")
 )
 
 type pkcs7 struct{}
@@ -63,6 +83,18 @@ func base32Decode(s string) ([]byte, error) {
 	return base32.HexEncoding.DecodeString(s)
 }
 
+func base64Encode(src []byte) string {
+	return base64.RawURLEncoding.EncodeToString(src)
+}
+
+func base64Decode(s string) ([]byte, error) {
+	decoded, err := base64.RawURLEncoding.DecodeString(s)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %s", ErrBadBase64, err)
+	}
+	return decoded, nil
+}
+
 func EncryptFileName(nameKey, nameTweak []byte, plaintext string) (string, error) {
 	if plaintext == "" {
 		return "", nil
@@ -79,13 +111,27 @@ func EncryptFileName(nameKey, nameTweak []byte, plaintext string) (string, error
 }
 
 func DecryptFileName(nameKey, nameTweak []byte, ciphertext string) (string, error) {
+	return DecryptFileNameWithEncoding(nameKey, nameTweak, ciphertext, FilenameEncodingBase32)
+}
+
+func DecryptFileNameWithEncoding(nameKey, nameTweak []byte, ciphertext string, encoding FilenameEncoding) (string, error) {
 	if ciphertext == "" {
 		return "", nil
 	}
 
-	decoded, err := base32Decode(ciphertext)
-	if err != nil {
-		return "", fmt.Errorf("base32 decode: %w", err)
+	var decoded []byte
+	var err error
+	switch encoding {
+	case FilenameEncodingBase64:
+		decoded, err = base64Decode(ciphertext)
+		if err != nil {
+			return "", fmt.Errorf("base64 decode: %w", err)
+		}
+	default:
+		decoded, err = base32Decode(ciphertext)
+		if err != nil {
+			return "", fmt.Errorf("base32 decode: %w", err)
+		}
 	}
 
 	if len(decoded) == 0 || len(decoded)%nameCipherBlockSize != 0 {
@@ -122,12 +168,16 @@ func EncryptFilePath(key *Key, path string) (string, error) {
 }
 
 func DecryptFilePath(key *Key, path string) (string, error) {
+	return DecryptFilePathWithEncoding(key, path, FilenameEncodingBase32)
+}
+
+func DecryptFilePathWithEncoding(key *Key, path string, encoding FilenameEncoding) (string, error) {
 	segments := strings.Split(path, "/")
 	for i, seg := range segments {
 		if seg == "" {
 			continue
 		}
-		dec, err := DecryptFileName(key.NameKey[:], key.NameTweak[:], seg)
+		dec, err := DecryptFileNameWithEncoding(key.NameKey[:], key.NameTweak[:], seg, encoding)
 		if err != nil {
 			return "", fmt.Errorf("decrypt segment %q: %w", seg, err)
 		}

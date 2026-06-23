@@ -435,6 +435,112 @@ func TestCLI_EncryptDecrypt_AutoDeriveOutput(t *testing.T) {
 	}
 }
 
+func TestCLI_Decrypt_FilenameEncodingFlag(t *testing.T) {
+	bin := buildBinary(t)
+	dir := t.TempDir()
+
+	input := filepath.Join(dir, "myfile.txt")
+	if err := os.WriteFile(input, []byte("encoding flag test"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("RCLONE_ENCRYPT_PASSWORD", "test-pwd")
+
+	_, stderr, err := runCLI(t, bin, "encrypt", input)
+	if err != nil {
+		t.Fatalf("encrypt failed: %v\nstderr: %s", err, stderr)
+	}
+
+	var encFile string
+	entries, _ := os.ReadDir(dir)
+	for _, e := range entries {
+		if e.Name() != "myfile.txt" {
+			encFile = filepath.Join(dir, e.Name())
+			break
+		}
+	}
+	if encFile == "" {
+		t.Fatal("no encrypted file found")
+	}
+
+	_, stderr, err = runCLI(t, bin, "decrypt", "--filename-encoding", "base32", encFile)
+	if err != nil {
+		t.Fatalf("decrypt with --filename-encoding=base32 failed: %v\nstderr: %s", err, stderr)
+	}
+	if !strings.Contains(stderr, "Derived output filename") {
+		t.Errorf("expected derivation message, got: %s", stderr)
+	}
+
+	result, _ := os.ReadFile(filepath.Join(dir, "myfile.txt"))
+	if string(result) != "encoding flag test" {
+		t.Errorf("got %q, want %q", string(result), "encoding flag test")
+	}
+}
+
+func TestCLI_Decrypt_FilenameEncodingEnvVar(t *testing.T) {
+	bin := buildBinary(t)
+	dir := t.TempDir()
+
+	input := filepath.Join(dir, "myfile.txt")
+	if err := os.WriteFile(input, []byte("env var encoding test"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("RCLONE_ENCRYPT_PASSWORD", "test-pwd")
+
+	_, stderr, err := runCLI(t, bin, "encrypt", input)
+	if err != nil {
+		t.Fatalf("encrypt failed: %v\nstderr: %s", err, stderr)
+	}
+
+	var encFile string
+	entries, _ := os.ReadDir(dir)
+	for _, e := range entries {
+		if e.Name() != "myfile.txt" {
+			encFile = filepath.Join(dir, e.Name())
+			break
+		}
+	}
+	if encFile == "" {
+		t.Fatal("no encrypted file found")
+	}
+
+	t.Setenv("RCLONE_ENCRYPT_FILENAME_ENCODING", "base32")
+
+	_, stderr, err = runCLI(t, bin, "decrypt", encFile)
+	if err != nil {
+		t.Fatalf("decrypt with env var failed: %v\nstderr: %s", err, stderr)
+	}
+	if !strings.Contains(stderr, "Derived output filename") {
+		t.Errorf("expected derivation message, got: %s", stderr)
+	}
+
+	result, _ := os.ReadFile(filepath.Join(dir, "myfile.txt"))
+	if string(result) != "env var encoding test" {
+		t.Errorf("got %q, want %q", string(result), "env var encoding test")
+	}
+}
+
+func TestCLI_Decrypt_FilenameEncodingInvalid(t *testing.T) {
+	bin := buildBinary(t)
+	dir := t.TempDir()
+
+	input := filepath.Join(dir, "test.bin")
+	if err := os.WriteFile(input, []byte("data"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("RCLONE_ENCRYPT_PASSWORD", "test-pwd")
+
+	_, stderr, err := runCLI(t, bin, "decrypt", "--filename-encoding", "base16", input, filepath.Join(dir, "out.txt"))
+	if err == nil {
+		t.Fatal("expected error for invalid encoding")
+	}
+	if !strings.Contains(stderr, "unknown filename encoding") {
+		t.Errorf("expected 'unknown filename encoding' in stderr, got: %s", stderr)
+	}
+}
+
 func TestCLI_EncryptDecrypt_OutputFlagOverridesAutoDerive(t *testing.T) {
 	bin := buildBinary(t)
 	dir := t.TempDir()
