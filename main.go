@@ -15,7 +15,7 @@ import (
 	"github.com/yetanotherchris/rclone-encrypt/internal/encrypt"
 )
 
-var version = "dev"
+var version = "0.1.0"
 
 func main() {
 	if err := run(); err != nil {
@@ -83,8 +83,8 @@ Encrypt a file using rclone-compatible encryption.
 Options:
   --password    Password (WARNING: insecure - use env var RCLONE_ENCRYPT_PASSWORD instead, or omit to be prompted)
   --salt        Optional hex-encoded salt (omit to use rclone's default salt)
-  --input       Input file path
-  --output      Output file path
+  -i, --input   Input file path
+  -o, --output  Output file path
 
 Positional arguments: <input> <output>
 `)
@@ -98,8 +98,8 @@ Decrypt a file encrypted with rclone-compatible encryption.
 Options:
   --password    Password (WARNING: insecure - use env var RCLONE_ENCRYPT_PASSWORD instead, or omit to be prompted)
   --salt        Optional hex-encoded salt (omit to use rclone's default salt)
-  --input       Input file path
-  --output      Output file path
+  -i, --input   Input file path
+  -o, --output  Output file path
 
 Positional arguments: <input> <output>
 `)
@@ -115,7 +115,9 @@ func runEncrypt(args []string) error {
 	fs.Var(&pw, "password", "Password (WARNING: insecure on command line)")
 	fs.StringVar(&saltHex, "salt", "", "Optional hex-encoded salt")
 	fs.StringVar(&input, "input", "", "Input file path")
+	fs.StringVar(&input, "i", "", "Input file path (shorthand)")
 	fs.StringVar(&output, "output", "", "Output file path")
+	fs.StringVar(&output, "o", "", "Output file path (shorthand)")
 
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -171,7 +173,9 @@ func runDecrypt(args []string) error {
 	fs.Var(&pw, "password", "Password (WARNING: insecure on command line)")
 	fs.StringVar(&saltHex, "salt", "", "Optional hex-encoded salt")
 	fs.StringVar(&input, "input", "", "Input file path")
+	fs.StringVar(&input, "i", "", "Input file path (shorthand)")
 	fs.StringVar(&output, "output", "", "Output file path")
+	fs.StringVar(&output, "o", "", "Output file path (shorthand)")
 
 	if err := fs.Parse(args); err != nil {
 		return err
