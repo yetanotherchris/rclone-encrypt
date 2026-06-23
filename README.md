@@ -1,13 +1,13 @@
 # rclone-encrypt
 
-A small CLI tool that encrypts and decrypts files using rclone-compatible encryption (XSalsa20-Poly1305 + scrypt).
+A small CLI tool that encrypts and decrypts using the rclone encryption defaults.
 
 Rclone uses a custom salt if no salt is provided, which this tool will use by default. A few similar tools:
 
-- [rclone](https://rclone.org/) - the full rclone tool with encryption support
+- [rclone](https://github.com/rclone/rclone)
 - [rclonedecrypt](https://github.com/mcolatosti/rclonedecrypt)
 - [rclone-rcc](https://github.com/br0kenpixel/rclone-rcc)
-- [rclone-crypt](https://github.com/fyears/rclone-crypt)
+- [@fyears/rclone-crypt](https://github.com/fyears/rclone-crypt)
 
 ## Installation
 
