@@ -55,6 +55,14 @@ export RCLONE_ENCRYPT_PASSWORD=mysecret
 rclone-encrypt encrypt input.txt output.bin
 ```
 
+### Supply salt via environment variable
+
+```bash
+export RCLONE_ENCRYPT_SALT=deadbeefdeadbeefdeadbeefdeadbeef
+rclone-encrypt encrypt input.txt output.bin
+rclone-encrypt decrypt output.bin input.txt
+```
+
 ### Supply password on command line (insecure)
 
 **WARNING:** Using `--password` exposes the password in process listings and shell history. Consider using the `RCLONE_ENCRYPT_PASSWORD` environment variable or omitting the flag to be prompted securely.
@@ -76,9 +84,9 @@ Rclone encryption uses:
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--password` | *(prompted)* | Encryption password (use env var `RCLONE_ENCRYPT_PASSWORD` instead when possible) |
-| `--salt` | *(default rclone salt)* | Hex-encoded salt (omit to use rclone's default salt) |
-| `--input` | *(positional)* | Input file path |
-| `--output` | *(positional)* | Output file path |
+| `--salt` | *(default rclone salt)* | Hex-encoded salt (omit to use rclone's default salt; also via `RCLONE_ENCRYPT_SALT` env var) |
+| `-i`, `--input` | *(positional)* | Input file path |
+| `-o`, `--output` | *(positional)* | Output file path |
 
 ## Building from Source
 
