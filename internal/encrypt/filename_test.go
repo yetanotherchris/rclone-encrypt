@@ -233,6 +233,117 @@ func TestFilenameEmpty(t *testing.T) {
 	}
 }
 
+func TestBase64_RoundTrip(t *testing.T) {
+	tests := []string{
+		"a",
+		"hello",
+		"hello world",
+		strings.Repeat("x", 100),
+	}
+
+	for _, tt := range tests {
+		t.Run(tt, func(t *testing.T) {
+			encoded := base64Encode([]byte(tt))
+			if strings.ContainsAny(encoded, "+/=") {
+				t.Error("base64 URL-safe should not contain + / or =")
+			}
+			decoded, err := base64Decode(encoded)
+			if err != nil {
+				t.Fatalf("Decode failed: %v", err)
+			}
+			if string(decoded) != tt {
+				t.Fatalf("round-trip mismatch: got %q, want %q", string(decoded), tt)
+			}
+		})
+	}
+}
+
+func TestParseFilenameEncoding(t *testing.T) {
+	tests := []struct {
+		input string
+		want  FilenameEncoding
+	}{
+		{"base32", FilenameEncodingBase32},
+		{"BASE32", FilenameEncodingBase32},
+		{"Base32", FilenameEncodingBase32},
+		{"base64", FilenameEncodingBase64},
+		{"BASE64", FilenameEncodingBase64},
+		{"Base64", FilenameEncodingBase64},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got, err := ParseFilenameEncoding(tt.input)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got != tt.want {
+				t.Fatalf("got %d, want %d", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestParseFilenameEncoding_Invalid(t *testing.T) {
+	_, err := ParseFilenameEncoding("base16")
+	if err == nil {
+		t.Fatal("expected error for invalid encoding")
+	}
+}
+
+func TestFilenameEncryptDecrypt_Base64Encoding(t *testing.T) {
+	key, err := DeriveKey("test-password", nil)
+	if err != nil {
+		t.Fatalf("DeriveKey failed: %v", err)
+	}
+
+	name := "hello.txt"
+	enc, err := EncryptFileName(key.NameKey[:], key.NameTweak[:], name)
+	if err != nil {
+		t.Fatalf("EncryptFileName failed: %v", err)
+	}
+
+	dec, err := DecryptFileNameWithEncoding(key.NameKey[:], key.NameTweak[:], enc, FilenameEncodingBase64)
+	if err == nil {
+		t.Fatal("expected error decrypting base32-encoded name with base64")
+	}
+	_ = dec
+
+	dec, err = DecryptFileNameWithEncoding(key.NameKey[:], key.NameTweak[:], enc, FilenameEncodingBase32)
+	if err != nil {
+		t.Fatalf("DecryptFileNameWithEncoding base32 failed: %v", err)
+	}
+	if dec != name {
+		t.Fatalf("got %q, want %q", dec, name)
+	}
+}
+
+func TestFilePathDecrypt_Base64Encoding(t *testing.T) {
+	key, err := DeriveKey("test-password", nil)
+	if err != nil {
+		t.Fatalf("DeriveKey failed: %v", err)
+	}
+
+	enc, err := EncryptFilePath(key, "dir/file.txt")
+	if err != nil {
+		t.Fatalf("EncryptFilePath failed: %v", err)
+	}
+
+	dec, err := DecryptFilePathWithEncoding(key, enc, FilenameEncodingBase64)
+	if err == nil {
+		t.Fatal("expected error decrypting base32-encoded path with base64")
+	}
+	_ = dec
+
+	dec, err = DecryptFilePathWithEncoding(key, enc, FilenameEncodingBase32)
+	if err != nil {
+		t.Fatalf("DecryptFilePathWithEncoding base32 failed: %v", err)
+	}
+	if dec != "dir/file.txt" {
+		t.Fatalf("got %q, want %q", dec, "dir/file.txt")
+	}
+}
+
 func TestFileNameEncoding_Base32Properties(t *testing.T) {
 	key, _ := DeriveKey("pwd", nil)
 	enc, _ := EncryptFileName(key.NameKey[:], key.NameTweak[:], "test.txt")

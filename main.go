@@ -98,10 +98,11 @@ Decrypt a file encrypted with rclone-compatible encryption.
 If output is omitted, the encrypted filename is decrypted with AES-EME and used as the output name.
 
 Options:
-  --password    Password (WARNING: insecure - use env var RCLONE_ENCRYPT_PASSWORD instead, or omit to be prompted)
-  --salt        Optional hex-encoded salt (omit to use rclone's default salt; also via RCLONE_ENCRYPT_SALT env var)
-  -i, --input   Input file path
-  -o, --output  Output file path (default: auto-derived from encrypted filename)
+  --password             Password (WARNING: insecure - use env var RCLONE_ENCRYPT_PASSWORD instead, or omit to be prompted)
+  --salt                 Optional hex-encoded salt (omit to use rclone's default salt; also via RCLONE_ENCRYPT_SALT env var)
+  --filename-encoding    Filename encoding for decryption: base32 (default) or base64 (also via RCLONE_ENCRYPT_FILENAME_ENCODING env var)
+  -i, --input            Input file path
+  -o, --output           Output file path (default: auto-derived from encrypted filename)
 
 Positional arguments: <input> [<output>]
 `)
@@ -119,12 +120,12 @@ func deriveEncryptOutput(input string, password string, salt []byte) (string, er
 	return encPath, nil
 }
 
-func deriveDecryptOutput(encryptedInput string, password string, salt []byte) (string, error) {
+func deriveDecryptOutput(encryptedInput string, password string, salt []byte, filenameEncoding encrypt.FilenameEncoding) (string, error) {
 	key, err := encrypt.DeriveKey(password, salt)
 	if err != nil {
 		return "", fmt.Errorf("derive key for filename: %w", err)
 	}
-	decPath, err := encrypt.DecryptFilePath(key, encryptedInput)
+	decPath, err := encrypt.DecryptFilePathWithEncoding(key, encryptedInput, filenameEncoding)
 	if err != nil {
 		return "", fmt.Errorf("decrypt filename: %w", err)
 	}
@@ -211,8 +212,10 @@ func runDecrypt(args []string) error {
 	var pw passwordFlag
 	var saltHex string
 	var input, output string
+	var filenameEncodingStr string
 	fs.Var(&pw, "password", "Password (WARNING: insecure on command line)")
 	fs.StringVar(&saltHex, "salt", "", "Optional hex-encoded salt")
+	fs.StringVar(&filenameEncodingStr, "filename-encoding", "", "Filename encoding: base32 (default) or base64")
 	fs.StringVar(&input, "input", "", "Input file path")
 	fs.StringVar(&input, "i", "", "Input file path (shorthand)")
 	fs.StringVar(&output, "output", "", "Output file path")
@@ -250,6 +253,11 @@ func runDecrypt(args []string) error {
 		return err
 	}
 
+	filenameEncoding, err := resolveFilenameEncoding(filenameEncodingStr)
+	if err != nil {
+		return err
+	}
+
 	if output == "" {
 		fileSegment := input
 		dirPrefix := ""
@@ -261,7 +269,7 @@ func runDecrypt(args []string) error {
 			dirPrefix = input[:idx+1]
 			fileSegment = input[idx+1:]
 		}
-		derived, err := deriveDecryptOutput(fileSegment, password, salt)
+		derived, err := deriveDecryptOutput(fileSegment, password, salt, filenameEncoding)
 		if err != nil {
 			return fmt.Errorf("derive output filename: %w", err)
 		}
@@ -317,6 +325,18 @@ func resolvePassword(fromFlag string) (string, error) {
 		return "", fmt.Errorf("password cannot be empty")
 	}
 	return pw, nil
+}
+
+func resolveFilenameEncoding(fromFlag string) (encrypt.FilenameEncoding, error) {
+	if fromFlag == "" {
+		if envEnc := os.Getenv("RCLONE_ENCRYPT_FILENAME_ENCODING"); envEnc != "" {
+			fromFlag = envEnc
+		}
+	}
+	if fromFlag == "" {
+		return encrypt.FilenameEncodingBase32, nil
+	}
+	return encrypt.ParseFilenameEncoding(fromFlag)
 }
 
 func resolveSalt(hexSalt string) ([]byte, error) {
