@@ -6,20 +6,20 @@ class RcloneEncrypt < Formula
   on_macos do
     if Hardware::CPU.arm?
       url "https://github.com/yetanotherchris/rclone-encrypt/releases/download/v1.0.0/rclone-encrypt-darwin-arm64.tar.gz"
-      sha256 "44173d750f137f4d0ae93d2add320d7745c7cd96e22b5c50ca545ca37c47496b"
+      sha256 "d9e48fce9bf0f1f453d5e650b90e281a3d53b9665687ff4af812c5f6c5a9516f"
     else
       url "https://github.com/yetanotherchris/rclone-encrypt/releases/download/v1.0.0/rclone-encrypt-darwin-amd64.tar.gz"
-      sha256 "71eae70b5c1c837acb63d3d320478321581de90424a5a0149f919160214b0f08"
+      sha256 "689794ef63806b9fb4658bc971c87a54bd04ab3acc3bf3ba9e0452e418a8b491"
     end
   end
 
   on_linux do
     if Hardware::CPU.arm?
       url "https://github.com/yetanotherchris/rclone-encrypt/releases/download/v1.0.0/rclone-encrypt-linux-arm64.tar.gz"
-      sha256 "227f9d3c79ba0a05fff21d407686fc27058e19b770c7746cd00f6dbbf122eb10"
+      sha256 "fcb7cf1bcbf464d60a2b380bd553776974a2628dc1c5e0e34ef063c353f50e28"
     else
       url "https://github.com/yetanotherchris/rclone-encrypt/releases/download/v1.0.0/rclone-encrypt-linux-amd64.tar.gz"
-      sha256 "138313bcab0517d2d2d02907600456f8e0054557de1e819a20197b9bc92c931e"
+      sha256 "76470b3232a9c852ff8d8ea88fe522932fd8260228c7f555ab15623fa4ee6da6"
     end
   end
 
